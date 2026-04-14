@@ -1,22 +1,22 @@
-"""pymirea — async Python client for Мирэа LKS (Личный Кабинет Студента).
+"""pymirea — async-клиент для Личного Кабинета Студента МИРЭА.
 
-Covers login + 2FA (Keycloak SSO), schedule, grades, attendance,
-ACS entry/exit events, e-sports registration, and session-token
-encryption (Fernet+HKDF).
+Покрывает: вход + 2FA (Keycloak SSO), расписание, оценки,
+посещаемость, события турникетов (ACS), регистрацию в e-sports,
+шифрование cookies (Fernet+HKDF).
 
-Quick start::
+Быстрый старт::
 
     from pymirea import Config, configure, MireaAuth
 
-    configure(Config(session_keys="base64-hkdf-seed"))
+    configure(Config(session_keys="base64-32-байтная-строка"))
 
     auth = MireaAuth()
-    result = await auth.login("s12345@edu.mirea.ru", "password")
+    result = await auth.login("s12345@edu.mirea.ru", "пароль")
     if result.challenge:
-        # 2FA required — prompt user for OTP, then:
+        # требуется 2FA — попросите у юзера OTP, потом:
         result = await auth.complete_2fa(result.challenge, "123456")
 
-    # result.tokens carries access/refresh/id tokens for subsequent API use.
+    # result.tokens — access/refresh/id-токены для последующего API.
 """
 
 from ._settings import configure

@@ -1,8 +1,8 @@
-"""Example: tiny FastAPI service exposing /api/login and /api/schedule.
-Sessions stored encrypted via SessionCrypto in a per-process dict (use
-your real DB in production).
+"""Пример: маленький FastAPI-сервис с эндпоинтами /api/login и /api/schedule.
+Сессии хранятся зашифрованными через SessionCrypto в per-process dict
+(в продакшене — используйте реальную БД).
 
-Run::
+Запуск::
 
     pip install fastapi uvicorn
     export MIREA_SESSION_KEY="..."
@@ -27,7 +27,7 @@ configure(Config(session_keys=os.environ["MIREA_SESSION_KEY"]))
 crypto = get_crypto()
 app = FastAPI(title="pymirea demo")
 
-# token (uuid) -> encrypted Мирэа cookies
+# token (uuid) -> зашифрованные cookies МИРЭА
 SESSIONS: dict[str, str] = {}
 
 
@@ -95,7 +95,7 @@ async def schedule(authorization: Optional[str] = Header(None)):
     }
 
 
-# ── helpers ─────────────────────────────────────────────────────────────
+# ── вспомогательные функции ─────────────────────────────────────────────────────────────
 def _issue_token(cookies: dict) -> dict:
     import uuid
 

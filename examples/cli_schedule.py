@@ -1,7 +1,7 @@
-"""Example: CLI script that logs in to Мирэа LKS and prints the user's
-class schedule for the current week.
+"""Пример: CLI-скрипт, который входит в МИРЭА LKS и печатает расписание
+на текущую неделю.
 
-Usage::
+Запуск::
 
     export MIREA_LOGIN="s12345@edu.mirea.ru"
     export MIREA_PASSWORD="..."

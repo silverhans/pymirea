@@ -1,13 +1,13 @@
-"""Example: minimal Telegram bot on aiogram 3.x exposing /login and
-/schedule commands. Stores Мирэа sessions encrypted via SessionCrypto
-in a tiny SQLite store.
+"""Пример: минимальный Telegram-бот на aiogram 3.x с командами /login
+и /schedule. Сессии МИРЭА хранятся зашифрованными через SessionCrypto
+в маленькой SQLite-БД.
 
-For production:
-- Replace the SQLite store with your real DB
-- Handle 2FA properly (currently asks user to send OTP as a follow-up message)
-- Add token-refresh background job (see pymirea.try_refresh_tokens)
+Для продакшена:
+- Замените SQLite на свою реальную БД
+- Корректно обработайте 2FA (сейчас бот ждёт OTP следующим сообщением)
+- Добавьте фоновый job обновления токенов (см. pymirea.try_refresh_tokens)
 
-Run::
+Запуск::
 
     pip install aiogram aiosqlite
     export TELEGRAM_BOT_TOKEN="..."
@@ -26,18 +26,18 @@ from aiogram.types import Message
 from pymirea import Config, MireaAPI, MireaAuth, configure
 from pymirea.crypto import get_crypto
 
-# ── one-time setup ──────────────────────────────────────────────────────
+# ── однократная настройка ──────────────────────────────────────────────────────
 configure(Config(session_keys=os.environ["MIREA_SESSION_KEY"]))
 crypto = get_crypto()
 bot = Bot(token=os.environ["TELEGRAM_BOT_TOKEN"])
 dp = Dispatcher()
 DB_PATH = "bot_sessions.db"
 
-# Per-user state for multi-step login (in-memory; use Redis in production)
+# Состояние многошагового логина по юзеру (in-memory; в проде — Redis)
 pending_login: dict[int, dict] = {}
 
 
-# ── tiny session store ──────────────────────────────────────────────────
+# ── маленькое хранилище сессий ──────────────────────────────────────────────────
 async def init_db() -> None:
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute(
@@ -66,12 +66,12 @@ async def load_session(tg_id: int) -> dict | None:
         return crypto.decrypt_session(row[0]) if row else None
 
 
-# ── handlers ────────────────────────────────────────────────────────────
+# ── обработчики ────────────────────────────────────────────────────────────
 @dp.message(Command("login"))
 async def cmd_login(msg: Message) -> None:
     parts = msg.text.split(maxsplit=2)
     if len(parts) != 3:
-        await msg.answer("Usage: /login your_login@edu.mirea.ru password")
+        await msg.answer("Использование: /login ваш_логин@edu.mirea.ru пароль")
         return
     _, login, password = parts
 
@@ -84,7 +84,7 @@ async def cmd_login(msg: Message) -> None:
         return
 
     if not result.tokens:
-        await msg.answer("Login failed.")
+        await msg.answer("Не удалось войти. Проверьте логин и пароль.")
         return
 
     await save_session(msg.from_user.id, result.tokens)
@@ -114,17 +114,17 @@ async def cmd_schedule(msg: Message) -> None:
     sched = await api.get_schedule()
 
     lines = []
-    for day in sched.days[:3]:  # first 3 days
+    for day in sched.days[:3]:  # первые 3 дня
         lines.append(f"📅 *{day.date}*")
         for lesson in day.lessons:
             lines.append(f"  {lesson.start} {lesson.subject}")
     await msg.answer("\n".join(lines) or "Расписание пустое.")
 
 
-# ── entry point ─────────────────────────────────────────────────────────
+# ── точка входа ─────────────────────────────────────────────────────────
 async def main() -> None:
     await init_db()
-    print("Bot starting…")
+    print("Бот запускается…")
     await dp.start_polling(bot)
 
 

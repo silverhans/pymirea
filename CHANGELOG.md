@@ -1,37 +1,40 @@
-# Changelog
+# История изменений
 
-All notable changes to **pymirea** are listed here. Format follows
-[Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning
-follows [SemVer](https://semver.org/).
+Заметные изменения **pymirea** перечислены здесь. Формат —
+[Keep a Changelog](https://keepachangelog.com/ru/1.1.0/), версии — по
+[SemVer](https://semver.org/lang/ru/).
 
 ## [Unreleased]
 
-### Added
-- README expanded with three runnable examples (CLI script, Telegram bot, FastAPI service)
-- `examples/` directory with copy-pasteable code
-- GitHub Actions CI: ruff lint + pytest on every push and PR
+### Добавлено
+- README расширен тремя готовыми примерами (CLI-скрипт, Telegram-бот, FastAPI-сервис)
+- Папка `examples/` с runnable-скриптами
+- GitHub Actions CI: ruff lint + pytest на каждый push и PR
+- Smoke-тесты в `tests/test_smoke.py` (6 offline-проверок API без живого аккаунта)
+
+### Исправлено
+- `SessionCrypto.get_crypto()` обращался к отсутствующему `settings.jwt_secret` (переименован в `legacy_bot_token` при extraction). Заменено на `getattr` с fallback'ом, чтобы приложения без legacy-секрета не падали.
 
 ## [0.1.1] — 2026-04-14
 
-### Changed
-- Relax `httpx` dependency to `>=0.25` (was `>=0.27`) for compatibility with downstream apps still pinned to older versions.
+### Изменено
+- Зависимость `httpx` ослаблена до `>=0.25` (было `>=0.27`) — для совместимости с downstream-приложениями, ещё запиненными на старые версии.
 
 ## [0.1.0] — 2026-04-14
 
-Initial release. Core async client for Мирэа LKS extracted from two
-internal projects (`silverhans/versiti-project` MireaScanner Web and
-`Oplexx` messenger backend) into a single canonical package.
+Первый релиз. Async-клиент для МИРЭА LKS извлечён из двух внутренних
+проектов (`silverhans/versiti-project` MireaScanner Web и `Oplexx`
+backend мессенджера) в единый канонический пакет.
 
-### Added
-- `MireaAuth` — login + 2FA (Keycloak SSO + OTP) + token refresh
-- `MireaAPI` — schedule, grades, attendance, attendance-detail
-- `MireaACS` — pulse.mirea.ru entry/exit events
-- `MireaEsports` — registration endpoints
-- `SessionCrypto` — Fernet+HKDF encryption of session cookies
-- `Config` + `configure()` — runtime configuration via DI
-- Public helpers: `get_authorization_header`, `try_refresh_tokens`,
-  `get_token_age_seconds`
-- MIT license
+### Добавлено
+- `MireaAuth` — login + 2FA (Keycloak SSO + OTP) + refresh токенов
+- `MireaAPI` — расписание, оценки, посещаемость, детали посещаемости
+- `MireaACS` — события турникетов через pulse.mirea.ru
+- `MireaEsports` — регистрация в e-sports
+- `SessionCrypto` — Fernet+HKDF шифрование cookies
+- `Config` + `configure()` — конфигурация runtime через DI
+- Public-хелперы: `get_authorization_header`, `try_refresh_tokens`, `get_token_age_seconds`
+- Лицензия MIT
 
 [Unreleased]: https://github.com/silverhans/pymirea/compare/v0.1.1...HEAD
 [0.1.1]: https://github.com/silverhans/pymirea/compare/v0.1.0...v0.1.1

@@ -1,7 +1,7 @@
-"""Smoke tests that run without a live Мирэа account — verify the
-package imports, configuration shim works, and SessionCrypto round-trips
-correctly. Real integration tests against pulse.mirea.ru live in
-downstream apps."""
+"""Smoke-тесты, которые можно прогнать без живого МИРЭА-аккаунта.
+Проверяют что пакет импортируется, ``configure``-shim работает и
+``SessionCrypto`` корректно шифрует/расшифровывает. Реальные
+интеграционные тесты против pulse.mirea.ru живут в downstream-приложениях."""
 
 import base64
 import secrets
@@ -40,7 +40,7 @@ def test_settings_proxy_raises_before_configure(monkeypatch):
     monkeypatch.setattr(pymirea._settings, "_cfg", None)
     from pymirea._settings import settings
 
-    with pytest.raises(RuntimeError, match="pymirea not configured"):
+    with pytest.raises(RuntimeError, match="pymirea не сконфигурирован"):
         _ = settings.session_keys
 
 
