@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 
-Асинхронный Python-клиент для [Личного Кабинета Студента МИРЭА](https://lks.mirea.ru).
+Асинхронный Python-клиент для [Пульса МИРЭА](https://pulse.mirea.ru).
 
 Поддерживает: вход с 2FA через Keycloak SSO, расписание занятий, оценки, посещаемость (отметка + детали), события турникетов (ACS), регистрацию в e-sports, шифрование сессий (Fernet + HKDF).
 
