@@ -101,7 +101,7 @@ class MireaAuth:
             qs = parse_qs(parsed.query)
             code = (qs.get("code") or [None])[0]
             return str(code) if code else None
-        except Exception:
+        except (ValueError, AttributeError):
             return None
 
     async def _exchange_code_for_token(self, code: str, *, code_verifier: str | None, redirect_uri: str) -> dict | None:
@@ -141,7 +141,7 @@ class MireaAuth:
                     await breaker.record_success()
                 try:
                     err_body = resp.text[:500]
-                except Exception:
+                except (UnicodeDecodeError, AttributeError):
                     err_body = "<unreadable>"
                 logger.warning("Token exchange failed: %s body=%s verifier=%s redirect=%s",
                                resp.status_code, err_body, bool(code_verifier), redirect_uri[:80] if redirect_uri else None)
@@ -160,11 +160,15 @@ class MireaAuth:
                 "refresh_token": body.get("refresh_token"),
                 "expires_in": body.get("expires_in"),
             }
-        except Exception:
+        except (httpx.NetworkError, httpx.TimeoutException, httpx.HTTPError) as e:
+            logger.warning("Token exchange network error: %s", type(e).__name__)
             try:
                 await get_breaker("mirea_sso").record_failure()
             except Exception:
                 pass
+            return None
+        except (ValueError, KeyError) as e:
+            logger.warning("Token exchange response error: %s", type(e).__name__)
             return None
 
     async def refresh_tokens(self, refresh_token: str) -> dict | None:
@@ -223,9 +227,18 @@ class MireaAuth:
                 "refresh_token": body.get("refresh_token") or token,
                 "expires_in": body.get("expires_in"),
             }
-        except Exception:
+        except (httpx.NetworkError, httpx.TimeoutException, httpx.HTTPError) as e:
+            logger.warning("Token refresh network error: %s", type(e).__name__)
             try:
                 await breaker.record_failure()
+            except Exception as e2:
+                logger.debug("Breaker record_failure failed: %s", e2)
+            return None
+        except (ValueError, KeyError) as e:
+            # JSON decode or unexpected response shape
+            logger.warning("Token refresh response error: %s", type(e).__name__)
+            try:
+                await breaker.record_success()  # Server responded, just bad data
             except Exception:
                 pass
             return None
@@ -890,7 +903,8 @@ class MireaAuth:
 
             # Если нас не редиректит на логин — сессия активна
             return "/login" not in str(response.url).lower()
-        except Exception:
+        except (httpx.NetworkError, httpx.TimeoutException, httpx.HTTPError) as e:
+            logger.debug("verify_session network error: %s", type(e).__name__)
             return False
 
     async def close(self):

@@ -98,3 +98,21 @@ def test_complete_2fa_alias_exists():
 
     assert hasattr(MireaAuth, "complete_2fa")
     assert callable(MireaAuth.complete_2fa)
+
+
+def test_session_crypto_logs_warning_on_corrupt_payload(caplog):
+    """If decryption succeeds but JSON is mangled — log a warning, return None."""
+    import logging
+
+    key = _fresh_session_key()
+    crypto = SessionCrypto(key)
+
+    # Encrypt non-JSON garbage with a key Fernet will accept on decryption
+    fernet = crypto._fernets[0]
+    bad_token = fernet.encrypt(b"\xff\xfe not json").decode("ascii")
+
+    with caplog.at_level(logging.WARNING, logger="pymirea.crypto"):
+        result = crypto.decrypt_session(bad_token)
+
+    assert result is None
+    assert any("payload is corrupt" in r.message for r in caplog.records)

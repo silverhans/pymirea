@@ -14,6 +14,11 @@
 - 2 smoke-теста, фиксирующих контракт обоих алиасов на будущее
 - 10 интеграционных тестов в `tests/test_auth_integration.py` для `MireaAuth.refresh_tokens` и `verify_session` через `respx` (мок httpx). Покрывают: success-флоу, 4xx ответ, пустой вход, отсутствующий access_token, фильтрацию internal cookies, поведение при редиректе на `/login`
 - `respx>=0.20` в `dev`-зависимостях
+- Тест `test_session_crypto_logs_warning_on_corrupt_payload` — повреждённая cookie-row в БД теперь логируется WARNING
+
+### Изменено
+- `crypto.py`: голые `except Exception` заменены на конкретные (`InvalidToken`, `JSONDecodeError`, `binascii.Error`). Повреждённая cookie-row теперь логирует WARNING вместо тихого `None`.
+- `auth.py`: голые `except Exception` в `refresh_tokens`, `_exchange_code_for_token`, `verify_session`, `_extract_code_from_url` заменены на конкретные (`httpx.NetworkError`, `httpx.TimeoutException`, `ValueError`, `KeyError`). Сетевые сбои логируются с типом исключения для диагностики.
 
 ## [0.1.2] — 2026-04-14
 
