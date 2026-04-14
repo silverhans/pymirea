@@ -6,11 +6,18 @@
 
 ## [Unreleased]
 
+## [0.1.2] — 2026-04-14
+
 ### Добавлено
 - README расширен тремя готовыми примерами (CLI-скрипт, Telegram-бот, FastAPI-сервис)
 - Папка `examples/` с runnable-скриптами
 - GitHub Actions CI: ruff lint + pytest на каждый push и PR
+- GitHub Actions release workflow: автопубликация на PyPI на push тега `v*` через trusted publishing (OIDC, без API-токенов)
 - Smoke-тесты в `tests/test_smoke.py` (6 offline-проверок API без живого аккаунта)
+
+### Изменено
+- Документация переведена на русский (целевая аудитория — студенты МИРЭА)
+- `LKS` → `Пульс` в README/CHANGELOG/docstring'ах: lks.mirea.ru как название портала устарело, актуальное — pulse.mirea.ru
 
 ### Исправлено
 - `SessionCrypto.get_crypto()` обращался к отсутствующему `settings.jwt_secret` (переименован в `legacy_bot_token` при extraction). Заменено на `getattr` с fallback'ом, чтобы приложения без legacy-секрета не падали.
@@ -36,6 +43,7 @@ backend мессенджера) в единый канонический пак�
 - Public-хелперы: `get_authorization_header`, `try_refresh_tokens`, `get_token_age_seconds`
 - Лицензия MIT
 
-[Unreleased]: https://github.com/silverhans/pymirea/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/silverhans/pymirea/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/silverhans/pymirea/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/silverhans/pymirea/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/silverhans/pymirea/releases/tag/v0.1.0

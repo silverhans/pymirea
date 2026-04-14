@@ -47,4 +47,4 @@ __all__ = [
     "try_refresh_tokens",
 ]
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"
