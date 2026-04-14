@@ -6,6 +6,8 @@
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-04-14
+
 ### Исправлено
 - `AuthResult.tokens` добавлен как property-алиас для `cookies` — README/examples ссылались на `result.tokens`, которого не существовало
 - `MireaAuth.complete_2fa()` добавлен как алиас для `submit_otp()` — README/examples звали `complete_2fa`, которого не существовало
@@ -58,7 +60,8 @@ backend мессенджера) в единый канонический пак�
 - Public-хелперы: `get_authorization_header`, `try_refresh_tokens`, `get_token_age_seconds`
 - Лицензия MIT
 
-[Unreleased]: https://github.com/silverhans/pymirea/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/silverhans/pymirea/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/silverhans/pymirea/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/silverhans/pymirea/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/silverhans/pymirea/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/silverhans/pymirea/releases/tag/v0.1.0
