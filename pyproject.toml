@@ -1,0 +1,44 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pymirea"
+version = "0.1.0"
+description = "Async Python client for Мирэа LKS (schedule, grades, attendance, ACS, SSO)"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+authors = [{ name = "silverhans" }]
+keywords = ["mirea", "lks", "university", "async", "scraper"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Framework :: AsyncIO",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Education",
+]
+dependencies = [
+    "httpx>=0.27",
+    "beautifulsoup4>=4.12",
+    "cryptography>=42",
+]
+
+[project.urls]
+Homepage = "https://github.com/silverhans/pymirea"
+Issues = "https://github.com/silverhans/pymirea/issues"
+
+[project.optional-dependencies]
+dev = ["pytest>=7", "pytest-asyncio>=0.23", "ruff>=0.5"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["pymirea"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]
