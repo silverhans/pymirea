@@ -9,6 +9,7 @@
 ### Исправлено
 - `AuthResult.tokens` добавлен как property-алиас для `cookies` — README/examples ссылались на `result.tokens`, которого не существовало
 - `MireaAuth.complete_2fa()` добавлен как алиас для `submit_otp()` — README/examples звали `complete_2fa`, которого не существовало
+- `_handle_required_actions`: после `max_account_config` и подобных required-actions, если token exchange упал но KC-cookies есть, теперь выполняется bootstrap `.AspNetCore.Cookies` через `pulse.mirea.ru/api/auth/login`. Без этого downstream Pulse API возвращает 401 для части юзеров (порт фикса из qrscaner production)
 
 ### Добавлено
 - 2 smoke-теста, фиксирующих контракт обоих алиасов на будущее

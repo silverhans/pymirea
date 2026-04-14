@@ -718,6 +718,48 @@ class MireaAuth:
                             pass
                         if all_cookies.get("access_token"):
                             return AuthResult(success=True, message="Авторизация успешна", cookies=all_cookies)
+                        # Token exchange failed (confidential client) — try to bootstrap
+                        # .AspNetCore.Cookies via pulse auth endpoint using the KC session.
+                        # Without this cookie, downstream Pulse API calls return 401.
+                        has_kc = any(k in all_cookies for k in ("KEYCLOAK_IDENTITY", "KEYCLOAK_SESSION"))
+                        if has_kc:
+                            logger.info("required-action: token exchange failed but have KC cookies, trying aspnet bootstrap")
+                            try:
+                                kc_cookie_names = ("KEYCLOAK_IDENTITY", "KEYCLOAK_SESSION")
+                                cookie_header_parts = []
+                                for cn in kc_cookie_names:
+                                    cv = all_cookies.get(cn)
+                                    if cv:
+                                        cookie_header_parts.append(f"{cn}={cv}")
+                                cookie_header = "; ".join(cookie_header_parts)
+                                async with httpx.AsyncClient(
+                                    follow_redirects=True,
+                                    timeout=httpx.Timeout(15.0, connect=8.0),
+                                    headers={
+                                        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15",
+                                        "Referer": "https://pulse.mirea.ru/",
+                                        "Cookie": cookie_header,
+                                    },
+                                    transport=httpx.AsyncHTTPTransport(retries=2),
+                                ) as bootstrap_client:
+                                    bootstrap_resp = await bootstrap_client.get(
+                                        "https://pulse.mirea.ru/api/auth/login",
+                                        params={"redirectUri": "/api/baseinfo"},
+                                    )
+                                    for name, value in bootstrap_client.cookies.items():
+                                        all_cookies[name] = value
+                                    aspnet = bootstrap_client.cookies.get(".AspNetCore.Cookies")
+                                    if aspnet:
+                                        all_cookies[".AspNetCore.Cookies"] = aspnet
+                                        logger.info("required-action: got .AspNetCore.Cookies via bootstrap")
+                                    else:
+                                        logger.warning(
+                                            "required-action: bootstrap did not yield .AspNetCore.Cookies, final_url=%s",
+                                            str(bootstrap_resp.url)[:150],
+                                        )
+                            except (httpx.NetworkError, httpx.TimeoutException, httpx.HTTPError) as e:
+                                logger.warning("required-action: aspnet bootstrap failed: %s", type(e).__name__)
+                            return AuthResult(success=True, message="Авторизация успешна", cookies=all_cookies)
                         if all_cookies:
                             logger.info("required-action skip: token exchange failed but have cookies, declaring success")
                             return AuthResult(success=True, message="Авторизация успешна", cookies=all_cookies)
