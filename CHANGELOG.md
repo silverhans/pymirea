@@ -12,6 +12,8 @@
 
 ### Добавлено
 - 2 smoke-теста, фиксирующих контракт обоих алиасов на будущее
+- 10 интеграционных тестов в `tests/test_auth_integration.py` для `MireaAuth.refresh_tokens` и `verify_session` через `respx` (мок httpx). Покрывают: success-флоу, 4xx ответ, пустой вход, отсутствующий access_token, фильтрацию internal cookies, поведение при редиректе на `/login`
+- `respx>=0.20` в `dev`-зависимостях
 
 ## [0.1.2] — 2026-04-14
 
