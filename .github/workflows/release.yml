@@ -1,0 +1,42 @@
+name: Publish to PyPI
+
+# Срабатывает на пуш тега вида v0.1.2, v1.0.0 и т.п.
+# Версия в pyproject.toml должна совпадать с тегом — иначе PyPI отвергнет.
+on:
+  push:
+    tags:
+      - 'v*'
+
+# Trusted publishing через OIDC — никаких API-токенов в репо/Secrets.
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build-and-publish:
+    name: Build + publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install build tooling
+        run: pip install build
+
+      - name: Build sdist + wheel
+        run: python -m build
+
+      - name: Verify version matches tag
+        run: |
+          PKG_VERSION=$(python -c 'import tomllib; print(tomllib.load(open("pyproject.toml","rb"))["project"]["version"])')
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          if [ "$PKG_VERSION" != "$TAG_VERSION" ]; then
+            echo "::error::Version mismatch: pyproject=$PKG_VERSION tag=$TAG_VERSION"
+            exit 1
+          fi
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
