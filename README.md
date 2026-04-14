@@ -1,5 +1,6 @@
 # pymirea
 
+[![PyPI](https://img.shields.io/pypi/v/pymirea.svg)](https://pypi.org/project/pymirea/)
 [![CI](https://github.com/silverhans/pymirea/actions/workflows/ci.yml/badge.svg)](https://github.com/silverhans/pymirea/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
@@ -11,8 +12,7 @@
 ## Установка
 
 ```bash
-# Из git (пока пакет не на PyPI):
-pip install git+https://github.com/silverhans/pymirea.git@v0.1.1
+pip install pymirea
 ```
 
 ## Первый запрос за 30 секунд
@@ -94,7 +94,32 @@ async def cmd_schedule(msg: types.Message):
 
 Полная версия: [`examples/telegram_bot.py`](examples/telegram_bot.py).
 
-### 3. FastAPI-веб-сервис
+### 3. Отметить посещаемость себе и друзьям одним QR-сканом
+
+Классический MireaScanner-флоу — сделайте своё приложение за 20 минут:
+
+```python
+from pymirea import MireaAPI, SessionCrypto
+from pymirea.crypto import get_crypto
+
+crypto = get_crypto()
+
+# Загрузите из своей БД зашифрованные сессии друзей
+friends = [
+    (123, "Саша", crypto.decrypt_session(row_sasha)),
+    (456, "Петя", crypto.decrypt_session(row_petya)),
+]
+
+api = MireaAPI(session_cookies=my_session)
+results = await api.mark_attendance_for_group(qr_data, friends)
+
+for r in results:
+    print(f"{r.user_name}: {'✓' if r.success else '✗ ' + r.message}")
+```
+
+`mark_attendance_for_group` сам извлекает токен из QR-URL, проходит по всем переданным сессиям и возвращает список `AttendanceResult` — готово к отображению в UI.
+
+### 4. FastAPI-веб-сервис
 
 ```python
 from fastapi import FastAPI, Depends, HTTPException
@@ -120,6 +145,8 @@ async def get_schedule(session: dict = Depends(current_session)):
 
 Полная версия: [`examples/fastapi_app.py`](examples/fastapi_app.py).
 
+> Примеров для QR-сканирования в папке `examples/` пока нет — PR приветствуется.
+
 ## Шифрование сессий
 
 Хранить cookies МИРЭА в БД в открытом виде нельзя — `SessionCrypto` оборачивает их в Fernet-токен с ключом, выведенным через HKDF из вашего `session_keys`:
@@ -140,7 +167,7 @@ decrypted: dict = crypto.decrypt_session(encrypted)     # прочтите из 
 |---|---|
 | `Config` / `configure(Config)` | Конфигурация runtime (DI-style, вызывается один раз на старте) |
 | `MireaAuth` | `login()`, `complete_2fa()`, refresh-token flow |
-| `MireaAPI` | `get_schedule()`, `get_grades()`, `get_attendance()`, `mark_attendance()` |
+| `MireaAPI` | `get_schedule()`, `get_grades()`, `get_attendance()`, `mark_attendance()`, `mark_attendance_for_group()` |
 | `MireaACS` | События турникетов через pulse.mirea.ru |
 | `MireaEsports` | Регистрация в e-sports |
 | `SessionCrypto` | Шифрование/расшифровка cookies (Fernet + HKDF) |
