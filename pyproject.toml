@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pymirea"
-version = "0.1.0"
+version = "0.1.1"
 description = "Async Python client for Мирэа LKS (schedule, grades, attendance, ACS, SSO)"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -20,7 +20,7 @@ classifiers = [
     "Topic :: Education",
 ]
 dependencies = [
-    "httpx>=0.27",
+    "httpx>=0.25",
     "beautifulsoup4>=4.12",
     "cryptography>=42",
 ]
