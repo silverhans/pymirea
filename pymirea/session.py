@@ -8,9 +8,10 @@ https://pulse.mirea.ru/selfapprove?token=UUID
 """
 import json
 import re
-from urllib.parse import urlparse, parse_qs
-import httpx
 from dataclasses import dataclass
+from urllib.parse import parse_qs, urlparse
+
+import httpx
 
 from ._settings import settings
 from .tokens import try_refresh_tokens
@@ -311,7 +312,7 @@ class MireaAPI:
                         message="QR-код недействителен или истёк"
                     )
                 else:
-                    logger.warning(f"Unknown MIREA response")
+                    logger.warning("Unknown MIREA response")
                     return AttendanceResult(
                         success=False,
                         message="Неизвестный ответ сервера. Проверьте вручную.",
@@ -348,7 +349,7 @@ class MireaAPI:
                 success=False,
                 message="Сервер МИРЭА не отвечает (timeout)"
             )
-        except Exception as e:
+        except Exception:
             try:
                 await get_breaker("mirea_attendance_app").record_failure()
             except Exception:
@@ -388,7 +389,7 @@ class MireaAPI:
                 result = await api.mark_attendance(qr_data)
                 result.user_name = user_name
                 results.append(result)
-            except Exception as e:
+            except Exception:
                 results.append(AttendanceResult(
                     success=False,
                     message="Ошибка отметки",

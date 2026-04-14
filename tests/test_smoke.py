@@ -1,0 +1,79 @@
+"""Smoke tests that run without a live Мирэа account — verify the
+package imports, configuration shim works, and SessionCrypto round-trips
+correctly. Real integration tests against pulse.mirea.ru live in
+downstream apps."""
+
+import base64
+import secrets
+
+import pytest
+
+import pymirea
+from pymirea import Config, SessionCrypto, configure
+
+
+def _fresh_session_key() -> str:
+    return base64.b64encode(secrets.token_bytes(32)).decode()
+
+
+def test_public_api_exposes_expected_names():
+    expected = {
+        "Config",
+        "configure",
+        "MireaAuth",
+        "MireaAPI",
+        "MireaACS",
+        "MireaEsports",
+        "SessionCrypto",
+        "AuthChallenge",
+        "AuthResult",
+        "get_authorization_header",
+        "get_token_age_seconds",
+        "try_refresh_tokens",
+    }
+    missing = expected - set(pymirea.__all__)
+    assert not missing, f"missing exports: {missing}"
+
+
+def test_settings_proxy_raises_before_configure(monkeypatch):
+    # Reset the module-level _cfg so the proxy raises on access
+    monkeypatch.setattr(pymirea._settings, "_cfg", None)
+    from pymirea._settings import settings
+
+    with pytest.raises(RuntimeError, match="pymirea not configured"):
+        _ = settings.session_keys
+
+
+def test_configure_then_settings_resolves():
+    configure(Config(session_keys=_fresh_session_key()))
+    from pymirea._settings import settings
+
+    # Resolves to the injected Config now
+    assert isinstance(settings.session_keys, str)
+    assert settings.session_keys
+
+
+def test_session_crypto_roundtrips_cookie_dict():
+    key = _fresh_session_key()
+    configure(Config(session_keys=key))
+    crypto = SessionCrypto(key)
+    cookies = {"sso_session": "abc.def.ghi", "kc_token": "xyz"}
+    encrypted = crypto.encrypt_session(cookies)
+    assert isinstance(encrypted, str)
+    assert "abc.def.ghi" not in encrypted  # actually encrypted
+
+    decrypted = crypto.decrypt_session(encrypted)
+    assert decrypted == cookies
+
+
+def test_session_crypto_decrypt_rejects_garbage():
+    key = _fresh_session_key()
+    crypto = SessionCrypto(key)
+    assert crypto.decrypt_session("not-a-valid-token") is None
+
+
+def test_get_authorization_header_returns_none_for_empty():
+    from pymirea import get_authorization_header
+
+    assert get_authorization_header(None) is None
+    assert get_authorization_header({}) is None

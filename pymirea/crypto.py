@@ -146,6 +146,6 @@ def get_crypto() -> SessionCrypto:
         logger.info("Session encryption: SESSION_KEYS configured (rotation enabled).")
         _crypto = SessionCrypto(
             settings.session_keys,
-            legacy_bot_token=settings.jwt_secret or None,
+            legacy_bot_token=getattr(settings, "legacy_bot_token", None) or None,
         )
     return _crypto

@@ -41,4 +41,4 @@ line-length = 120
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I"]
-ignore = ["E501"]
+ignore = ["E501", "E722", "E741", "F841"]  # pre-existing patterns in the upstream code

@@ -13,13 +13,14 @@ import logging
 import re
 import struct
 from dataclasses import dataclass
-from datetime import datetime, time as dtime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
+from datetime import time as dtime
 
 import httpx
 
 from ._settings import settings
-from .upstreams import get_breaker
 from .tokens import get_authorization_header, try_refresh_tokens
+from .upstreams import get_breaker
 
 logger = logging.getLogger(__name__)
 

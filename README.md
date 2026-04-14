@@ -1,69 +1,201 @@
 # pymirea
 
-Async Python client for [Мирэа LKS](https://lks.mirea.ru) (Личный Кабинет Студента).
+[![CI](https://github.com/silverhans/pymirea/actions/workflows/ci.yml/badge.svg)](https://github.com/silverhans/pymirea/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 
-Covers login + 2FA via Keycloak SSO, class schedule, grades, attendance (mark & detail), ACS (турникеты) entry/exit events, e-sports registration, and session-token encryption (Fernet + HKDF).
+Async Python-клиент для [Мирэа LKS](https://lks.mirea.ru) — Личного Кабинета Студента РТУ МИРЭА.
 
-## Install
+Покрывает: вход с 2FA через Keycloak SSO, расписание занятий, оценки, посещаемость (отметка + детали), события турникетов (ACS), регистрацию в e-sports, шифрование сессий (Fernet + HKDF).
+
+## Установка
 
 ```bash
-pip install git+https://github.com/silverhans/pymirea.git@v0.1.0
+# Из git (актуально пока пакет не на PyPI):
+pip install git+https://github.com/silverhans/pymirea.git@v0.1.1
 ```
 
-## Quick start
+## Первый запрос за 30 секунд
 
 ```python
 import asyncio
 from pymirea import Config, configure, MireaAuth
 
-configure(Config(
-    session_keys="base64-hkdf-seed",   # required; see below
-    mirea_proxy=None,                  # optional HTTP/SOCKS proxy for pulse.mirea.ru
-))
+# Сгенерируйте свой ключ один раз:
+#   python -c "import secrets,base64; print(base64.b64encode(secrets.token_bytes(32)).decode())"
+configure(Config(session_keys="ВАША_BASE64_СТРОКА_32_БАЙТА"))
 
 async def main():
     auth = MireaAuth()
-    result = await auth.login("s12345@edu.mirea.ru", "password")
+    result = await auth.login("ваш_логин@edu.mirea.ru", "пароль")
+
     if result.challenge:
-        # 2FA required — prompt user for OTP, then:
-        result = await auth.complete_2fa(result.challenge, "123456")
-    tokens = result.tokens  # access / refresh / id tokens
+        # Мирэа просит OTP (приходит на почту/в Telegram-бот)
+        code = input("Код из email: ")
+        result = await auth.complete_2fa(result.challenge, code)
+
+    print("Вошли! Токены:", result.tokens)
 
 asyncio.run(main())
 ```
 
-## Configuration
+## Примеры использования
 
-`Config.session_keys` is the only required field. Generate a 32-byte HKDF seed:
+### 1. Простой скрипт — получить расписание
 
-```bash
-python -c "import secrets, base64; print(base64.b64encode(secrets.token_bytes(32)).decode())"
+```python
+import asyncio
+from pymirea import Config, configure, MireaAuth, MireaAPI
+
+configure(Config(session_keys="..."))
+
+async def main():
+    auth = MireaAuth()
+    result = await auth.login("logn@edu.mirea.ru", "pwd")
+    # ... обработка 2FA если нужно ...
+
+    api = MireaAPI(session_cookies=result.tokens)
+    schedule = await api.get_schedule()
+    for day in schedule.days:
+        print(f"{day.date}:")
+        for lesson in day.lessons:
+            print(f"  {lesson.start} {lesson.subject} — {lesson.teacher}")
+
+asyncio.run(main())
 ```
 
-Full config options: see [`pymirea/config.py`](pymirea/config.py).
+Полная версия: [`examples/cli_schedule.py`](examples/cli_schedule.py).
 
-## Architecture
+### 2. Telegram-бот на aiogram
 
-Pure async, no global state besides an opt-in `settings` shim used internally so the ported code can reference `settings.foo` without each module knowing about dependency injection. Your app calls `configure()` once at startup; everything else follows.
+```python
+from aiogram import Bot, Dispatcher, types
+from pymirea import Config, configure, MireaAuth, MireaAPI
 
-Public API (`pymirea.*`):
+configure(Config(session_keys="..."))
 
-| Name | Purpose |
+bot = Bot(token="...")
+dp = Dispatcher()
+
+# user_id -> session cookies (в продакшене — в БД, зашифрованно через SessionCrypto)
+sessions: dict[int, dict] = {}
+
+@dp.message(commands=["schedule"])
+async def cmd_schedule(msg: types.Message):
+    cookies = sessions.get(msg.from_user.id)
+    if not cookies:
+        await msg.answer("Сначала /login")
+        return
+    api = MireaAPI(session_cookies=cookies)
+    sched = await api.get_schedule()
+    text = "\n".join(f"{l.start} — {l.subject}" for d in sched.days for l in d.lessons)
+    await msg.answer(text)
+```
+
+Полная версия: [`examples/telegram_bot.py`](examples/telegram_bot.py).
+
+### 3. FastAPI-веб-сервис
+
+```python
+from fastapi import FastAPI, Depends, HTTPException
+from pymirea import Config, configure, MireaAPI, SessionCrypto
+
+configure(Config(session_keys="..."))
+crypto = SessionCrypto()
+app = FastAPI()
+
+def current_session(token: str = Depends(...)) -> dict:
+    """Расшифровать сессию пользователя из вашего хранилища."""
+    encrypted = your_db.get_mirea_session(user_id_from(token))
+    if not encrypted:
+        raise HTTPException(401)
+    return crypto.decrypt_session(encrypted)
+
+@app.get("/api/schedule")
+async def get_schedule(session: dict = Depends(current_session)):
+    api = MireaAPI(session_cookies=session)
+    return await api.get_schedule()
+```
+
+Полная версия: [`examples/fastapi_app.py`](examples/fastapi_app.py).
+
+## Шифрование сессий
+
+Хранить cookies Мирэа в БД в открытом виде нельзя. `SessionCrypto` оборачивает их в Fernet-токен с ключом, выведенным через HKDF из вашего `session_keys`:
+
+```python
+from pymirea import SessionCrypto
+
+crypto = SessionCrypto()
+encrypted: str = crypto.encrypt_session(cookies_dict)   # сохраните в БД
+decrypted: dict = crypto.decrypt_session(encrypted)     # прочтите из БД
+```
+
+При смене `session_keys` старые токены становятся нечитаемыми — храните старый ключ в `legacy_bot_token` для grace-period миграции.
+
+## Public API
+
+| Имя | Назначение |
 |---|---|
-| `Config` | Runtime configuration dataclass |
-| `configure(Config)` | Wire the library to your config |
-| `MireaAuth` | Login, 2FA, token refresh |
-| `MireaAPI` | Schedule / grades / attendance wrapper |
-| `MireaACS` | Турникеты (entry/exit events) |
-| `MireaEsports` | E-sports registration endpoints |
-| `SessionCrypto` | Fernet+HKDF encryption of session cookies |
-| `get_authorization_header()` | Pull Bearer header from session dict |
-| `try_refresh_tokens()` | Best-effort refresh before expiry |
+| `Config` / `configure(Config)` | Конфигурация runtime (DI-style, вызывается один раз на старте) |
+| `MireaAuth` | `login()`, `complete_2fa()`, refresh-token flow |
+| `MireaAPI` | `get_schedule()`, `get_grades()`, `get_attendance()`, `mark_attendance()` |
+| `MireaACS` | События турникетов через pulse.mirea.ru |
+| `MireaEsports` | Регистрация в e-sports |
+| `SessionCrypto` | Шифрование/расшифровка cookies (Fernet + HKDF) |
+| `AuthChallenge` / `AuthResult` | Результаты login-флоу |
+| `get_authorization_header(cookies)` | Bearer-токен из dict сессии |
+| `try_refresh_tokens(cookies)` | Best-effort refresh access-токена |
+| `get_token_age_seconds(cookies)` | Сколько секунд токен живёт |
 
-## License
+Подробнее в исходниках: [`pymirea/`](pymirea/).
 
-MIT — see [LICENSE](LICENSE).
+## Конфигурация
 
-## Upstream
+```python
+from pymirea import Config
 
-Extracted from [Oplexx](https://github.com/oplexx) (закрытый) и [versiti-project](https://github.com/silverhans/versiti-project) (MireaScanner Web). Обе кодовые базы теперь потребляют `pymirea` как зависимость.
+Config(
+    session_keys="base64-32-bytes",     # обязательно
+    mirea_proxy="http://proxy:8080",    # опционально, для pulse.mirea.ru (датацентры заблокированы)
+    legacy_bot_token=None,              # старый ключ для миграции при ротации
+    request_timeout_s=15.0,
+    breaker_failure_threshold=5,
+    breaker_recovery_s=30.0,
+)
+```
+
+## Совместимость
+
+- **Python** 3.11+
+- **Async-only** (нет sync-оболочки; используйте `asyncio.run` для скриптов)
+- **Любой web-фреймворк**: FastAPI, aiohttp, Sanic, Litestar, Quart — pymirea не привязан ни к одному
+- **Любая БД** для хранения сессий — pymirea даёт только примитивы шифрования
+
+## Что НЕ делает pymirea
+
+- ❌ Не хранит сессии — это задача вашего приложения (БД/Redis/файл)
+- ❌ Не управляет пользователями — у вас своя auth-система
+- ❌ Не предоставляет HTTP-handlers — пишите свои под свой фреймворк
+- ❌ Не парсит сложные нестандартные формы Мирэа (профили, дипломы — TBD)
+
+Если хотите готовый микросервис — соберите Telegram-бот / FastAPI-сервис на основе примеров.
+
+## Внести вклад
+
+Issues и PR приветствуются. Особенно полезно:
+- Тесты для новых сценариев (logout, edge-cases в 2FA, etc.)
+- Поддержка дополнительных эндпоинтов Мирэа
+- Примеры для других фреймворков (Discord-боты, CLI-tools, ...)
+
+## Лицензия
+
+MIT — см. [LICENSE](LICENSE).
+
+## История
+
+Извлечено из двух работающих проектов:
+- [silverhans/versiti-project](https://github.com/silverhans/versiti-project) (MireaScanner Web)
+- Oplexx (закрытый мессенджер для Мирэа-сообщества)
+
+Оба теперь используют `pymirea` как зависимость — единая кодовая база Мирэа-клиента, никакого drift.

@@ -6,14 +6,15 @@
 """
 import base64
 import hashlib
-import re
 import logging
+import re
 import secrets
-import httpx
 from dataclasses import dataclass
 from urllib.parse import parse_qs, urljoin, urlparse
 
+import httpx
 from bs4 import BeautifulSoup
+
 from ._settings import settings
 from .upstreams import get_breaker
 

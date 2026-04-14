@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 import re
 from dataclasses import dataclass
-from urllib.parse import urljoin, urlparse, parse_qs
+from urllib.parse import parse_qs, urljoin, urlparse
 
 import httpx
 

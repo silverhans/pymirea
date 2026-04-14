@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from .circuit_breaker import CircuitBreaker
 
-
 # Keep thresholds conservative: do not penalize the core "scan" flow too aggressively.
 _BREAKERS: dict[str, CircuitBreaker] = {
     # Keycloak/SSO pages + token exchange.
