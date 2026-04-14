@@ -17,14 +17,16 @@
 
 import asyncio
 import os
+from datetime import datetime
 
 import aiosqlite
 from aiogram import Bot, Dispatcher
 from aiogram.filters import Command
 from aiogram.types import Message
 
-from pymirea import Config, MireaAPI, MireaAuth, configure
+from pymirea import Config, MireaAuth, configure
 from pymirea.crypto import get_crypto
+from pymirea.grades import MireaGrades
 
 # ── однократная настройка ──────────────────────────────────────────────────────
 configure(Config(session_keys=os.environ["MIREA_SESSION_KEY"]))
@@ -110,15 +112,23 @@ async def cmd_schedule(msg: Message) -> None:
         await msg.answer("Сначала /login.")
         return
 
-    api = MireaAPI(session_cookies=cookies)
-    sched = await api.get_schedule()
+    api = MireaGrades(session_cookies=cookies)
+    sched = await api.get_schedule(days=3)
+
+    if not sched.success or not sched.lessons:
+        await msg.answer(sched.message or "Расписание пустое.")
+        return
 
     lines = []
-    for day in sched.days[:3]:  # первые 3 дня
-        lines.append(f"📅 *{day.date}*")
-        for lesson in day.lessons:
-            lines.append(f"  {lesson.start} {lesson.subject}")
-    await msg.answer("\n".join(lines) or "Расписание пустое.")
+    current_day = ""
+    for lesson in sched.lessons:
+        when = datetime.fromtimestamp(lesson.start_epoch or 0)
+        day = when.strftime("%d.%m (%a)")
+        if day != current_day:
+            lines.append(f"📅 *{day}*")
+            current_day = day
+        lines.append(f"  {when.strftime('%H:%M')} {lesson.name}")
+    await msg.answer("\n".join(lines))
 
 
 # ── точка входа ─────────────────────────────────────────────────────────

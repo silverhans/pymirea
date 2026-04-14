@@ -1,5 +1,5 @@
 """Пример: CLI-скрипт, который входит в Пульс МИРЭА и печатает расписание
-на текущую неделю.
+на ближайшие 7 дней.
 
 Запуск::
 
@@ -11,8 +11,10 @@
 
 import asyncio
 import os
+from datetime import datetime
 
-from pymirea import Config, MireaAPI, MireaAuth, configure
+from pymirea import Config, MireaAuth, configure
+from pymirea.grades import MireaGrades
 
 
 async def main() -> None:
@@ -25,27 +27,33 @@ async def main() -> None:
     result = await auth.login(login, password)
 
     if result.challenge:
-        # 2FA: Мирэа отправит OTP на университетскую почту.
         otp = input("Введите код из email: ").strip()
         result = await auth.complete_2fa(result.challenge, otp)
 
-    if not result.tokens:
-        print("Не удалось войти. Проверьте логин/пароль.")
+    if not result.success or not result.tokens:
+        print("Не удалось войти:", result.message)
         return
 
-    api = MireaAPI(session_cookies=result.tokens)
-    schedule = await api.get_schedule()
+    api = MireaGrades(session_cookies=result.tokens)
+    schedule = await api.get_schedule(days=7)
+    if not schedule.success or not schedule.lessons:
+        print("Нет пар:", schedule.message)
+        return
 
-    print(f"\nРасписание ({len(schedule.days)} дней):\n")
-    for day in schedule.days:
-        print(f"=== {day.date} ===")
-        for lesson in day.lessons:
-            print(
-                f"  {lesson.start}-{lesson.end}  "
-                f"{lesson.subject:<40}  {lesson.teacher or '?':<25}  "
-                f"{lesson.classroom or ''}"
-            )
-        print()
+    print(f"\nРасписание ({len(schedule.lessons)} пар):\n")
+    current_day = ""
+    for lesson in schedule.lessons:
+        when = datetime.fromtimestamp(lesson.start_epoch or 0)
+        day = when.strftime("%d.%m (%a)")
+        if day != current_day:
+            print(f"\n=== {day} ===")
+            current_day = day
+        end = datetime.fromtimestamp(lesson.end_epoch or 0).strftime("%H:%M") if lesson.end_epoch else "?"
+        print(
+            f"  {when.strftime('%H:%M')}-{end}  "
+            f"{lesson.name:<40}  {lesson.teacher or '?':<25}  "
+            f"{lesson.room or ''}"
+        )
 
 
 if __name__ == "__main__":

@@ -15,13 +15,9 @@ from typing import Optional
 from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel
 
-from pymirea import (
-    Config,
-    MireaAPI,
-    MireaAuth,
-    configure,
-)
+from pymirea import Config, MireaAuth, configure
 from pymirea.crypto import get_crypto
+from pymirea.grades import MireaGrades
 
 configure(Config(session_keys=os.environ["MIREA_SESSION_KEY"]))
 crypto = get_crypto()
@@ -79,19 +75,22 @@ async def login_otp(body: OtpBody):
 @app.get("/api/schedule")
 async def schedule(authorization: Optional[str] = Header(None)):
     cookies = _session_from_header(authorization)
-    api = MireaAPI(session_cookies=cookies)
-    sched = await api.get_schedule()
+    api = MireaGrades(session_cookies=cookies)
+    sched = await api.get_schedule(days=7)
+    if not sched.success:
+        raise HTTPException(502, sched.message)
     return {
-        "days": [
+        "lessons": [
             {
-                "date": d.date,
-                "lessons": [
-                    {"start": l.start, "end": l.end, "subject": l.subject, "teacher": l.teacher}
-                    for l in d.lessons
-                ],
+                "start": l.start_epoch,
+                "end": l.end_epoch,
+                "name": l.name,
+                "teacher": l.teacher,
+                "room": l.room,
+                "type": l.lesson_type,
             }
-            for d in sched.days
-        ]
+            for l in (sched.lessons or [])
+        ],
     }
 
 

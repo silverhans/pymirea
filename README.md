@@ -45,7 +45,9 @@ asyncio.run(main())
 
 ```python
 import asyncio
-from pymirea import Config, configure, MireaAuth, MireaAPI
+from datetime import datetime
+from pymirea import Config, configure, MireaAuth
+from pymirea.grades import MireaGrades
 
 configure(Config(session_keys="..."))
 
@@ -54,12 +56,11 @@ async def main():
     result = await auth.login("login@edu.mirea.ru", "пароль")
     # ... обработка 2FA если потребуется ...
 
-    api = MireaAPI(session_cookies=result.tokens)
-    schedule = await api.get_schedule()
-    for day in schedule.days:
-        print(f"{day.date}:")
-        for lesson in day.lessons:
-            print(f"  {lesson.start} {lesson.subject} — {lesson.teacher}")
+    api = MireaGrades(session_cookies=result.tokens)
+    schedule = await api.get_schedule(days=7)
+    for lesson in schedule.lessons:
+        when = datetime.fromtimestamp(lesson.start_epoch).strftime("%d.%m %H:%M")
+        print(f"{when}  {lesson.name} — {lesson.teacher or '?'} ({lesson.room or '?'})")
 
 asyncio.run(main())
 ```
@@ -69,8 +70,10 @@ asyncio.run(main())
 ### 2. Telegram-бот на aiogram
 
 ```python
+from datetime import datetime
 from aiogram import Bot, Dispatcher, types
-from pymirea import Config, configure, MireaAuth, MireaAPI
+from pymirea import Config, configure, MireaAuth
+from pymirea.grades import MireaGrades
 
 configure(Config(session_keys="..."))
 
@@ -86,10 +89,13 @@ async def cmd_schedule(msg: types.Message):
     if not cookies:
         await msg.answer("Сначала /login")
         return
-    api = MireaAPI(session_cookies=cookies)
-    sched = await api.get_schedule()
-    text = "\n".join(f"{l.start} — {l.subject}" for d in sched.days for l in d.lessons)
-    await msg.answer(text)
+    api = MireaGrades(session_cookies=cookies)
+    sched = await api.get_schedule(days=3)
+    lines = [
+        f"{datetime.fromtimestamp(l.start_epoch).strftime('%d.%m %H:%M')} — {l.name}"
+        for l in sched.lessons
+    ]
+    await msg.answer("\n".join(lines) or "Пар не найдено")
 ```
 
 Полная версия: [`examples/telegram_bot.py`](examples/telegram_bot.py).
@@ -123,7 +129,8 @@ for r in results:
 
 ```python
 from fastapi import FastAPI, Depends, HTTPException
-from pymirea import Config, configure, MireaAPI
+from pymirea import Config, configure
+from pymirea.grades import MireaGrades
 from pymirea.crypto import get_crypto
 
 configure(Config(session_keys="..."))
@@ -139,8 +146,16 @@ def current_session(token: str = Depends(...)) -> dict:
 
 @app.get("/api/schedule")
 async def get_schedule(session: dict = Depends(current_session)):
-    api = MireaAPI(session_cookies=session)
-    return await api.get_schedule()
+    api = MireaGrades(session_cookies=session)
+    result = await api.get_schedule(days=7)
+    return {
+        "success": result.success,
+        "lessons": [
+            {"start": l.start_epoch, "end": l.end_epoch, "name": l.name,
+             "teacher": l.teacher, "room": l.room}
+            for l in (result.lessons or [])
+        ],
+    }
 ```
 
 Полная версия: [`examples/fastapi_app.py`](examples/fastapi_app.py).
@@ -166,10 +181,11 @@ decrypted: dict = crypto.decrypt_session(encrypted)     # прочтите из 
 | Имя | Назначение |
 |---|---|
 | `Config` / `configure(Config)` | Конфигурация runtime (DI-style, вызывается один раз на старте) |
-| `MireaAuth` | `login()`, `complete_2fa()`, refresh-token flow |
-| `MireaAPI` | `get_schedule()`, `get_grades()`, `get_attendance()`, `mark_attendance()`, `mark_attendance_for_group()` |
-| `MireaACS` | События турникетов через pulse.mirea.ru |
-| `MireaEsports` | Регистрация в e-sports |
+| `MireaAuth` | `login()`, `complete_2fa()` (алиас `submit_otp()`), `refresh_tokens()`, `verify_session()` |
+| `MireaAPI` (`pymirea.session`) | `mark_attendance()`, `mark_attendance_for_group()`, `extract_token_from_qr()`, `get_attendance_score()` |
+| `MireaGrades` (`pymirea.grades`) | `get_schedule()`, `get_grades()`, `get_attendance_detail()`, `self_approve_attendance()` |
+| `MireaACS` | `get_today_events()` — события турникетов |
+| `MireaEsports` | `login()`, `get_slots()`, `create_booking()`, `get_my_bookings()`, `cancel_booking()` |
 | `SessionCrypto` | Шифрование/расшифровка cookies (Fernet + HKDF) |
 | `AuthChallenge` / `AuthResult` | Результаты login-флоу |
 | `get_authorization_header(cookies)` | Bearer-токен из dict сессии |
