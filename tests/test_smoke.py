@@ -77,3 +77,24 @@ def test_get_authorization_header_returns_none_for_empty():
 
     assert get_authorization_header(None) is None
     assert get_authorization_header({}) is None
+
+
+def test_auth_result_tokens_alias_matches_cookies():
+    """README/examples reference ``result.tokens`` — must stay in sync with ``cookies``."""
+    from pymirea import AuthResult
+
+    cookies = {"access_token": "abc", "refresh_token": "def"}
+    res = AuthResult(success=True, message="ok", cookies=cookies)
+    assert res.tokens is res.cookies
+    assert res.tokens == cookies
+
+    empty = AuthResult(success=False, message="nope")
+    assert empty.tokens is None
+
+
+def test_complete_2fa_alias_exists():
+    """README/examples call ``auth.complete_2fa(...)`` — must be a real method."""
+    from pymirea import MireaAuth
+
+    assert hasattr(MireaAuth, "complete_2fa")
+    assert callable(MireaAuth.complete_2fa)

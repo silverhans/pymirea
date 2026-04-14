@@ -40,6 +40,11 @@ class AuthResult:
     user_info: dict | None = None
     challenge: AuthChallenge | None = None
 
+    @property
+    def tokens(self) -> dict | None:
+        """Alias for ``cookies`` — name used in README/examples."""
+        return self.cookies
+
 
 class MireaAuth:
     """Авторизация через SSO МИРЭА"""
@@ -851,6 +856,10 @@ class MireaAuth:
         except Exception as e:
             logger.error(f"OTP submit error: {e}")
             return AuthResult(success=False, message="Внутренняя ошибка")
+
+    async def complete_2fa(self, challenge: AuthChallenge, code: str, *, cookies: dict | None = None) -> AuthResult:
+        """Alias for :meth:`submit_otp` — name used in README/examples."""
+        return await self.submit_otp(challenge, code, cookies=cookies)
 
     async def verify_session(self, cookies: dict) -> bool:
         """
