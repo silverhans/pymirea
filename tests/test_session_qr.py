@@ -5,9 +5,7 @@ from __future__ import annotations
 import base64
 import secrets
 
-import httpx
 import pytest
-import respx
 
 from pymirea import Config, MireaAPI, configure
 

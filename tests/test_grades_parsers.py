@@ -13,7 +13,7 @@ import struct
 import pytest
 
 from pymirea import Config, configure
-from pymirea.grades import MireaGrades, Subject
+from pymirea.grades import MireaGrades
 
 
 def _setup() -> None:
