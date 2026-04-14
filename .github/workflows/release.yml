@@ -7,10 +7,10 @@ on:
     tags:
       - 'v*'
 
-# Trusted publishing через OIDC — никаких API-токенов в репо/Secrets.
+# Trusted publishing через OIDC + создание GitHub Release.
 permissions:
   id-token: write
-  contents: read
+  contents: write
 
 jobs:
   build-and-publish:
@@ -40,3 +40,26 @@ jobs:
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
+
+      - name: Extract release notes from CHANGELOG
+        id: notes
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          # Grab content between "## [VERSION]" and next "## [" header
+          awk -v ver="$VERSION" '
+            $0 ~ "^## \\["ver"\\]" { flag=1; next }
+            flag && /^## \[/ { flag=0 }
+            flag { print }
+          ' CHANGELOG.md > release_notes.md
+          # Fallback if section missing or empty
+          if [ ! -s release_notes.md ]; then
+            echo "See [CHANGELOG.md](CHANGELOG.md)." > release_notes.md
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          body_path: release_notes.md
+          files: dist/*
