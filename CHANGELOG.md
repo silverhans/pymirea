@@ -6,6 +6,13 @@
 
 ## [Unreleased]
 
+### Исправлено
+- `AuthResult.tokens` добавлен как property-алиас для `cookies` — README/examples ссылались на `result.tokens`, которого не существовало
+- `MireaAuth.complete_2fa()` добавлен как алиас для `submit_otp()` — README/examples звали `complete_2fa`, которого не существовало
+
+### Добавлено
+- 2 smoke-теста, фиксирующих контракт обоих алиасов на будущее
+
 ## [0.1.2] — 2026-04-14
 
 ### Добавлено
