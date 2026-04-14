@@ -9,6 +9,7 @@ Recommended configuration:
 from __future__ import annotations
 
 import base64
+import binascii
 import hashlib
 import json
 import logging
@@ -36,9 +37,9 @@ def _split_csv(value: str | None) -> list[str]:
 def _looks_like_fernet_key(value: str) -> bool:
     try:
         raw = base64.urlsafe_b64decode(value.encode("ascii"))
-        return len(raw) == 32
-    except Exception:
+    except (binascii.Error, ValueError, UnicodeEncodeError):
         return False
+    return len(raw) == 32
 
 
 def _legacy_fernet_key_from_secret(secret: str) -> bytes:
@@ -78,7 +79,9 @@ class SessionCrypto:
         for entry in _split_csv(session_keys):
             try:
                 key = _fernet_key_from_config_entry(entry)
-            except Exception:
+            except (binascii.Error, ValueError, UnicodeEncodeError) as e:
+                # Bad entry in SESSION_KEYS — log and skip so other valid keys still load
+                logger.warning("Skipping invalid SESSION_KEYS entry: %s", type(e).__name__)
                 continue
             if key not in keys:
                 keys.append(key)
@@ -108,14 +111,17 @@ class SessionCrypto:
         for idx, f in enumerate(self._fernets):
             try:
                 decrypted = f.decrypt(token)
-                cookies = json.loads(decrypted.decode("utf-8"))
-                if isinstance(cookies, dict):
-                    return _DecryptedSession(cookies=cookies, key_index=idx)
-                return None
             except InvalidToken:
-                continue
-            except Exception:
+                continue  # Try next key in rotation
+            try:
+                cookies = json.loads(decrypted.decode("utf-8"))
+            except (json.JSONDecodeError, UnicodeDecodeError) as e:
+                # Decryption succeeded but payload is corrupt — log so DB row can be inspected
+                logger.warning("Decrypted session payload is corrupt (%s)", type(e).__name__)
                 return None
+            if isinstance(cookies, dict):
+                return _DecryptedSession(cookies=cookies, key_index=idx)
+            return None
         return None
 
     def decrypt_session(self, encrypted_data: str) -> dict | None:
