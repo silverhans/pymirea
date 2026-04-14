@@ -219,11 +219,3 @@ Issues и PR приветствуются. Особенно полезно:
 ## Лицензия
 
 MIT — см. [LICENSE](LICENSE).
-
-## История
-
-Извлечено из двух работающих проектов:
-- [silverhans/versiti-project](https://github.com/silverhans/versiti-project) (MireaScanner Web)
-- Oplexx — закрытый мессенджер для сообщества МИРЭА
-
-Оба теперь используют `pymirea` как зависимость — единая кодовая база МИРЭА-клиента, никакого drift.
