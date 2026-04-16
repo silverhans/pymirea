@@ -318,6 +318,8 @@ class MireaGrades:
             flag = data[pos]
             length = struct.unpack(">I", data[pos + 1 : pos + 5])[0]
             pos += 5
+            if pos + length > len(data):
+                break
             payload = data[pos : pos + length]
             pos += length
 
@@ -467,6 +469,8 @@ class MireaGrades:
     def _read_length_delimited(self, data: bytes, pos: int) -> tuple[bytes, int]:
         length, pos = self._decode_varint(data, pos)
         length_i = int(length)
+        if pos + length_i > len(data):
+            return b"", len(data)
         value = data[pos : pos + length_i]
         return value, pos + length_i
 
@@ -662,10 +666,10 @@ class MireaGrades:
 
         import logging as _logging
         _log = _logging.getLogger(__name__)
-        _log.info("selfapprove raw payload hex: %s", payload.hex())
+        _log.debug("selfapprove raw payload hex: %s", payload.hex())
 
         approved, reason, _lesson_id = self._parse_selfapprove_response(payload)
-        _log.info("selfapprove parsed: approved=%s reason=%r lesson_id=%r", approved, reason, _lesson_id)
+        _log.debug("selfapprove parsed: approved=%s reason=%r lesson_id=%r", approved, reason, _lesson_id)
         if approved is True:
             return True, None
         if approved is False:

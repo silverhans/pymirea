@@ -127,6 +127,8 @@ class MireaACS:
             flag = data[pos]
             length = struct.unpack(">I", data[pos + 1 : pos + 5])[0]
             pos += 5
+            if pos + length > len(data):
+                break
             payload = data[pos : pos + length]
             pos += length
 
@@ -285,8 +287,11 @@ class MireaACS:
 
     def _read_length_delimited(self, data: bytes, pos: int) -> tuple[bytes, int]:
         length, pos = self._decode_varint(data, pos)
-        value = data[pos : pos + int(length)]
-        return value, pos + int(length)
+        length_i = int(length)
+        if pos + length_i > len(data):
+            return b"", len(data)
+        value = data[pos : pos + length_i]
+        return value, pos + length_i
 
     def _field_varint(self, field_no: int, value: int) -> bytes:
         key = (int(field_no) << 3) | 0

@@ -409,7 +409,7 @@ class MireaAPI:
         """Импортировать cookies из JSON"""
         try:
             return json.loads(cookies_json)
-        except:
+        except Exception:
             return {}
 
     async def close(self):
