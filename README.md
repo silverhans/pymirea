@@ -112,8 +112,8 @@ crypto = get_crypto()
 
 # Загрузите из своей БД зашифрованные сессии друзей
 friends = [
-    (123, "Саша", crypto.decrypt_session(row_sasha)),
-    (456, "Петя", crypto.decrypt_session(row_petya)),
+    (123, "Эллиот", crypto.decrypt_session(row_elliot)),
+    (456, "Уолтер", crypto.decrypt_session(row_walter)),
 ]
 
 api = MireaAPI(session_cookies=my_session)
