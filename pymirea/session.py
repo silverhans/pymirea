@@ -13,6 +13,7 @@ from urllib.parse import parse_qs, urlparse
 
 import httpx
 
+from ._http import make_async_client
 from ._settings import settings
 from .tokens import try_refresh_tokens
 from .upstreams import get_breaker
@@ -45,7 +46,7 @@ class MireaAPI:
                 continue
             cookies.set(name, value, domain=".mirea.ru")
         limits = httpx.Limits(max_connections=100, max_keepalive_connections=50, keepalive_expiry=10.0)
-        self.client = httpx.AsyncClient(
+        self.client = make_async_client(
             follow_redirects=True,
             timeout=httpx.Timeout(30.0, connect=10.0),
             cookies=cookies,

@@ -15,6 +15,7 @@ from urllib.parse import parse_qs, urljoin, urlparse
 import httpx
 from bs4 import BeautifulSoup
 
+from ._http import make_async_client
 from ._settings import settings
 from .upstreams import get_breaker
 
@@ -65,7 +66,7 @@ class MireaAuth:
         limits = httpx.Limits(max_connections=100, max_keepalive_connections=50, keepalive_expiry=10.0)
         timeout = httpx.Timeout(30.0, connect=10.0)
         # Основной клиент для SSO
-        self.client = httpx.AsyncClient(
+        self.client = make_async_client(
             follow_redirects=True,
             timeout=timeout,
             headers=self._headers,
@@ -73,7 +74,7 @@ class MireaAuth:
             proxy=settings.mirea_proxy if settings.mirea_proxy else None,
         )
         # Клиент с прокси для pulse.mirea.ru (блокирует датацентры)
-        self.proxy_client = httpx.AsyncClient(
+        self.proxy_client = make_async_client(
             follow_redirects=True,
             timeout=timeout,
             headers=self._headers,
