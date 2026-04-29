@@ -38,8 +38,9 @@ class MireaEsports:
     """Клиент для esports.mirea.ru."""
 
     def __init__(self) -> None:
+        from ._http import make_async_client
         from ._settings import settings
-        self._client = httpx.AsyncClient(
+        self._client = make_async_client(
             timeout=httpx.Timeout(25.0, connect=10.0),
             follow_redirects=False,
             headers={

@@ -733,7 +733,7 @@ class MireaAuth:
                                     if cv:
                                         cookie_header_parts.append(f"{cn}={cv}")
                                 cookie_header = "; ".join(cookie_header_parts)
-                                async with httpx.AsyncClient(
+                                async with make_async_client(
                                     follow_redirects=True,
                                     timeout=httpx.Timeout(15.0, connect=8.0),
                                     headers={
@@ -935,7 +935,7 @@ class MireaAuth:
                 if str(name).startswith("__"):
                     continue
                 filtered_cookies[name] = value
-            async with httpx.AsyncClient(
+            async with make_async_client(
                 follow_redirects=True,
                 timeout=httpx.Timeout(15.0, connect=8.0),
                 cookies=filtered_cookies,

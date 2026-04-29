@@ -55,6 +55,12 @@ class CurlCffiAsyncClient:
 
     # ─── Public API mirroring httpx.AsyncClient ──────────────────────────
 
+    async def __aenter__(self) -> "CurlCffiAsyncClient":
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb) -> None:
+        await self.aclose()
+
     async def get(self, url: str, **kwargs: Any) -> Any:
         return await self._request("GET", url, **kwargs)
 
