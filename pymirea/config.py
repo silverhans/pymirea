@@ -49,3 +49,19 @@ class Config:
 
     breaker_recovery_s: float = 30.0
     """Circuit-breaker: сколько держать открытым перед half-open пробой."""
+
+    tls_impersonate: Optional[str] = None
+    """Имитировать TLS fingerprint браузера (например, ``"chrome120"``).
+
+    По умолчанию ``None`` — используется стандартный httpx (Python
+    fingerprint). Если задано — pymirea подменяет HTTP-клиент на
+    ``curl_cffi`` с указанным impersonation-профилем, чтобы JA3/JA4 был
+    как у Chrome/Safari/Firefox. Полезно если МИРЭА начнут блокировать
+    по TLS-fingerprinting через DDoS-Guard.
+
+    Требует установки extras::
+
+        pip install pymirea[tls]
+
+    Поддерживаемые профили — см. документацию curl_cffi
+    (chrome120, safari17, firefox133 и др.)."""
