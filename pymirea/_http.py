@@ -11,11 +11,14 @@ lazily so that ``curl_cffi`` is not a hard dependency — install it via
 
 from __future__ import annotations
 
+import logging
 from typing import Any, Optional
 
 import httpx
 
 from ._settings import settings
+
+logger = logging.getLogger(__name__)
 
 
 def make_async_client(
@@ -44,6 +47,7 @@ def make_async_client(
         # Lazy import — keeps curl_cffi optional.
         from ._http_cffi import CurlCffiAsyncClient
 
+        logger.debug("make_async_client: backend=curl_cffi, impersonate=%s", impersonate)
         return CurlCffiAsyncClient(
             impersonate=impersonate,
             headers=headers,
@@ -53,6 +57,7 @@ def make_async_client(
             follow_redirects=follow_redirects,
         )
 
+    logger.debug("make_async_client: backend=httpx (no TLS impersonation)")
     return httpx.AsyncClient(
         headers=headers,
         cookies=cookies,

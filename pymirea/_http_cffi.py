@@ -10,6 +10,7 @@ out of the default install.
 
 from __future__ import annotations
 
+import logging
 from typing import Any, Optional
 
 import httpx
@@ -20,6 +21,8 @@ except ImportError as e:
     raise ImportError(
         "TLS impersonation requires curl_cffi. Install with: pip install pymirea[tls]"
     ) from e
+
+logger = logging.getLogger(__name__)
 
 
 class CurlCffiAsyncClient:
@@ -52,6 +55,7 @@ class CurlCffiAsyncClient:
             kwargs["cookies"] = self._cookies_to_dict(cookies)
 
         self._session = AsyncSession(**kwargs)
+        logger.info("pymirea HTTP client: TLS impersonation enabled (impersonate=%s, backend=curl_cffi)", impersonate)
 
     # ─── Public API mirroring httpx.AsyncClient ──────────────────────────
 
@@ -102,7 +106,21 @@ class CurlCffiAsyncClient:
         except Exception as e:
             translated = self._translate_exception(e)
             if translated is not e:
+                logger.debug(
+                    "translated curl_cffi exception: %s → %s",
+                    type(e).__name__,
+                    type(translated).__name__,
+                )
                 raise translated from e
+            # Untranslated — log loudly so we know to extend _translate_exception.
+            # Exceptions that aren't curl_cffi-specific (e.g. caller's ValueError)
+            # are also surfaced here, but the WARNING is cheap enough to allow.
+            if self._looks_like_cffi_exception(e):
+                logger.warning(
+                    "untranslated curl_cffi exception (extend _translate_exception): %s: %s",
+                    type(e).__name__,
+                    e,
+                )
             raise
 
     @staticmethod
@@ -113,6 +131,13 @@ class CurlCffiAsyncClient:
             read = float(timeout.read or 30.0)
             return (connect, read)
         return timeout
+
+    @staticmethod
+    def _looks_like_cffi_exception(e: Exception) -> bool:
+        """Heuristic: is this exception from curl_cffi (so we should warn) or
+        from caller code (e.g. ValueError that should pass through silently)?"""
+        module = type(e).__module__ or ""
+        return module.startswith("curl_cffi")
 
     @staticmethod
     def _translate_exception(e: Exception) -> Exception:
