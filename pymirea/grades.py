@@ -175,7 +175,7 @@ class MireaGrades:
             # Make cookies available for all *.mirea.ru hosts to survive redirects between subdomains.
             cookies.set(str(name), str(value), domain=".mirea.ru")
 
-        limits = httpx.Limits(max_connections=30, max_keepalive_connections=15, keepalive_expiry=10.0)
+        limits = httpx.Limits(max_connections=100, max_keepalive_connections=50, keepalive_expiry=10.0)
         timeout = httpx.Timeout(30.0, connect=10.0)
         self.client = httpx.AsyncClient(
             follow_redirects=True,

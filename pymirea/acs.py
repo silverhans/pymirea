@@ -78,7 +78,7 @@ class MireaACS:
                 continue
             cookies.set(str(name), str(value), domain=".mirea.ru")
 
-        limits = httpx.Limits(max_connections=30, max_keepalive_connections=15, keepalive_expiry=10.0)
+        limits = httpx.Limits(max_connections=100, max_keepalive_connections=50, keepalive_expiry=10.0)
         timeout = httpx.Timeout(25.0, connect=10.0)
         self.client = httpx.AsyncClient(
             follow_redirects=True,
