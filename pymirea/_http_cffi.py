@@ -97,7 +97,13 @@ class CurlCffiAsyncClient:
         if "cookies" in kwargs and kwargs["cookies"] is not None:
             kwargs["cookies"] = self._cookies_to_dict(kwargs["cookies"])
 
-        return await self._session.request(method, url, **kwargs)
+        try:
+            return await self._session.request(method, url, **kwargs)
+        except Exception as e:
+            translated = self._translate_exception(e)
+            if translated is not e:
+                raise translated from e
+            raise
 
     @staticmethod
     def _timeout_seconds(timeout: Any) -> Any:
@@ -107,6 +113,49 @@ class CurlCffiAsyncClient:
             read = float(timeout.read or 30.0)
             return (connect, read)
         return timeout
+
+    @staticmethod
+    def _translate_exception(e: Exception) -> Exception:
+        """Translate curl_cffi exceptions into httpx equivalents.
+
+        pymirea consumers catch ``httpx.TimeoutException`` /
+        ``httpx.NetworkError`` etc. With curl_cffi backend, those
+        ``except`` blocks would never match — so we re-raise as the
+        equivalent httpx type. Caller code stays oblivious to the
+        underlying transport.
+        """
+        try:
+            from curl_cffi import exceptions as cce  # type: ignore[import-not-found]
+        except ImportError:
+            return e
+
+        # Order matters: more specific subclasses first.
+        timeout_cls = getattr(cce, "Timeout", None)
+        if timeout_cls is not None and isinstance(e, timeout_cls):
+            return httpx.TimeoutException(str(e))
+
+        connect_cls = getattr(cce, "ConnectionError", None)
+        if connect_cls is not None and isinstance(e, connect_cls):
+            return httpx.ConnectError(str(e))
+
+        proxy_cls = getattr(cce, "ProxyError", None)
+        if proxy_cls is not None and isinstance(e, proxy_cls):
+            return httpx.ProxyError(str(e))
+
+        ssl_cls = getattr(cce, "SSLError", None)
+        if ssl_cls is not None and isinstance(e, ssl_cls):
+            return httpx.NetworkError(str(e))
+
+        http_cls = getattr(cce, "HTTPError", None)
+        if http_cls is not None and isinstance(e, http_cls):
+            return httpx.HTTPError(str(e))
+
+        # Generic curl_cffi RequestException → httpx.NetworkError
+        req_cls = getattr(cce, "RequestException", None)
+        if req_cls is not None and isinstance(e, req_cls):
+            return httpx.NetworkError(str(e))
+
+        return e
 
     @staticmethod
     def _cookies_to_dict(cookies: Any) -> dict[str, str]:

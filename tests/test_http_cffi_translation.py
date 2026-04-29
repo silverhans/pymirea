@@ -280,3 +280,84 @@ async def test_aclose_handles_no_close_method():
     c = CurlCffiAsyncClient(impersonate="chrome120")
     c._session.close = None
     await c.aclose()  # must not raise
+
+
+# ──────────────────────────────────────────────────────────────────────
+# Exception translation: curl_cffi → httpx
+#
+# pymirea code catches httpx.TimeoutException / NetworkError. Without
+# translation, those `except` blocks would never match when the curl_cffi
+# backend is active, leaving every transient network error unhandled.
+# ──────────────────────────────────────────────────────────────────────
+
+
+import httpx  # noqa: E402
+from curl_cffi import exceptions as cce  # noqa: E402
+
+
+@pytest.mark.asyncio
+async def test_translates_curl_timeout_to_httpx_timeout():
+    _setup()
+    c = CurlCffiAsyncClient(impersonate="chrome120")
+    with mock.patch.object(c._session, "request", new_callable=AsyncMock) as req:
+        req.side_effect = cce.Timeout("connection timed out")
+        with pytest.raises(httpx.TimeoutException):
+            await c.get("https://x.test/")
+
+
+@pytest.mark.asyncio
+async def test_translates_curl_connection_error_to_httpx_connect_error():
+    _setup()
+    c = CurlCffiAsyncClient(impersonate="chrome120")
+    with mock.patch.object(c._session, "request", new_callable=AsyncMock) as req:
+        req.side_effect = cce.ConnectionError("DNS failed")
+        with pytest.raises(httpx.ConnectError):
+            await c.get("https://x.test/")
+
+
+@pytest.mark.asyncio
+async def test_translates_curl_request_exception_to_httpx_network_error():
+    _setup()
+    c = CurlCffiAsyncClient(impersonate="chrome120")
+    with mock.patch.object(c._session, "request", new_callable=AsyncMock) as req:
+        # Use the base RequestException which doesn't match a more specific subclass.
+        req.side_effect = cce.RequestException("generic curl problem")
+        with pytest.raises(httpx.NetworkError):
+            await c.get("https://x.test/")
+
+
+@pytest.mark.asyncio
+async def test_does_not_swallow_unrelated_exceptions():
+    """Non-curl exceptions (e.g. ValueError from caller code) propagate as-is."""
+    _setup()
+    c = CurlCffiAsyncClient(impersonate="chrome120")
+    with mock.patch.object(c._session, "request", new_callable=AsyncMock) as req:
+        req.side_effect = ValueError("not a network error")
+        with pytest.raises(ValueError):
+            await c.get("https://x.test/")
+
+
+def test_translate_exception_returns_original_when_curl_cffi_missing(monkeypatch):
+    """Defensive: if curl_cffi.exceptions can't be imported, return e as-is."""
+    import sys
+    # Force ImportError by removing curl_cffi.exceptions from sys.modules and
+    # blocking re-import via sys.path. Simpler: just verify the API contract.
+    e = RuntimeError("fake")
+    monkeypatch.setitem(sys.modules, "curl_cffi", None)
+    monkeypatch.setitem(sys.modules, "curl_cffi.exceptions", None)
+    result = CurlCffiAsyncClient._translate_exception(e)
+    assert result is e
+
+
+@pytest.mark.asyncio
+async def test_translation_preserves_chained_cause():
+    """The original curl_cffi exception is set as __cause__ for debuggability."""
+    _setup()
+    c = CurlCffiAsyncClient(impersonate="chrome120")
+    original = cce.Timeout("read timeout")
+    with mock.patch.object(c._session, "request", new_callable=AsyncMock) as req:
+        req.side_effect = original
+        try:
+            await c.get("https://x.test/")
+        except httpx.TimeoutException as raised:
+            assert raised.__cause__ is original
