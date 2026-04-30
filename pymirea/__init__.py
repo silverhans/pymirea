@@ -22,6 +22,7 @@
 from ._settings import configure
 from .acs import MireaACS
 from .auth import AuthChallenge, AuthResult, MireaAuth
+from .client import Client
 from .config import Config
 from .crypto import SessionCrypto
 from .esports import MireaEsports
@@ -45,6 +46,7 @@ from .tokens import (
 __all__ = [
     "Config",
     "configure",
+    "Client",
     "MireaAPI",
     "MireaACS",
     "MireaAuth",
@@ -65,4 +67,4 @@ __all__ = [
     "try_refresh_tokens",
 ]
 
-__version__ = "0.3.4"
+__version__ = "0.3.5"

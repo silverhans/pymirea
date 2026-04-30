@@ -6,6 +6,7 @@ import json
 import logging
 import time
 
+from . import _hooks
 from .auth import MireaAuth
 from .exceptions import MireaSessionExpired
 
@@ -126,9 +127,16 @@ async def try_refresh_tokens(session_cookies: dict | None) -> bool:
         if not refresh_token:
             return False
 
+        prev_age = get_token_age_seconds(session_cookies)
         auth = MireaAuth()
         try:
             tokens = await auth.refresh_tokens(refresh_token)
+        except Exception as exc:
+            await _hooks.dispatch(
+                "on_error", exc,
+                {"where": "try_refresh_tokens", "had_refresh_token": True},
+            )
+            raise
         finally:
             try:
                 await auth.close()
@@ -137,10 +145,18 @@ async def try_refresh_tokens(session_cookies: dict | None) -> bool:
 
         if not tokens:
             logger.warning("token refresh failed — no tokens returned")
+            await _hooks.dispatch(
+                "on_refresh",
+                {"success": False, "age_s": prev_age, "had_refresh_token": True},
+            )
             return False
 
         session_cookies.update(tokens)
         session_cookies["__token_refreshed_at"] = int(time.time())
+        await _hooks.dispatch(
+            "on_refresh",
+            {"success": True, "age_s": prev_age, "had_refresh_token": True},
+        )
         return True
 
 

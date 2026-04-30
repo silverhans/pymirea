@@ -16,9 +16,30 @@ from typing import Any, Optional
 
 import httpx
 
+from . import _hooks
 from ._settings import settings
 
 logger = logging.getLogger(__name__)
+
+
+async def _emit_request_hook(response: httpx.Response) -> None:
+    """httpx response event-hook → fires user-provided on_request callback.
+
+    Always registered; the dispatcher silently no-ops when no hook is set,
+    which costs one async function call (sub-microsecond)."""
+    try:
+        elapsed = response.elapsed.total_seconds() * 1000
+    except Exception:
+        elapsed = 0.0
+    await _hooks.dispatch(
+        "on_request",
+        {
+            "method": response.request.method,
+            "url": str(response.request.url),
+            "status": response.status_code,
+            "duration_ms": round(elapsed, 2),
+        },
+    )
 
 
 def make_async_client(
@@ -65,4 +86,5 @@ def make_async_client(
         transport=transport,
         proxy=proxy,
         follow_redirects=follow_redirects,
+        event_hooks={"response": [_emit_request_hook]},
     )

@@ -3,7 +3,12 @@
 конкретным host-приложением."""
 
 from dataclasses import dataclass
-from typing import Optional
+from typing import Awaitable, Callable, Optional, Union
+
+# Type alias for hook callables: either a sync function or an async one
+# returning a coroutine. Implementations swallow any exception, so the hook
+# may raise freely without affecting pymirea's hot path.
+HookFn = Optional[Callable[..., Union[None, Awaitable[None]]]]
 
 
 @dataclass(frozen=True)
@@ -65,3 +70,31 @@ class Config:
 
     Поддерживаемые профили — см. документацию curl_cffi
     (chrome120, safari17, firefox133 и др.)."""
+
+    on_refresh: HookFn = None
+    """Optional callback invoked after every token-refresh attempt.
+
+    Receives a dict like::
+
+        {"success": True, "age_s": 1234, "had_refresh_token": True}
+
+    Hook may be sync or async (a returned coroutine is awaited). Exceptions
+    from the hook are logged and swallowed — observability never breaks
+    request flow. Useful for emitting Prometheus counters / Grafana series
+    without parsing pymirea's logs."""
+
+    on_request: HookFn = None
+    """Optional callback invoked after every HTTP request to МИРЭА.
+
+    Receives a dict like::
+
+        {"method": "POST", "url": "https://...", "status": 200, "duration_ms": 432}
+
+    Same sync/async + swallow-exception contract as ``on_refresh``."""
+
+    on_error: HookFn = None
+    """Optional callback invoked when pymirea catches an exception in a
+    critical path (refresh failure, parse error, etc.).
+
+    Receives ``(exception, context_dict)``. Same sync/async + swallow
+    contract."""
