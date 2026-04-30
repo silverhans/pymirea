@@ -25,10 +25,20 @@ from .auth import AuthChallenge, AuthResult, MireaAuth
 from .config import Config
 from .crypto import SessionCrypto
 from .esports import MireaEsports
+from .exceptions import (
+    MireaError,
+    MireaParseFailed,
+    MireaRateLimited,
+    MireaRefreshFailed,
+    MireaServerError,
+    MireaSessionExpired,
+)
 from .session import MireaAPI
 from .tokens import (
+    ensure_fresh_token,
     get_authorization_header,
     get_token_age_seconds,
+    get_token_exp,
     try_refresh_tokens,
 )
 
@@ -42,9 +52,17 @@ __all__ = [
     "SessionCrypto",
     "AuthChallenge",
     "AuthResult",
+    "MireaError",
+    "MireaSessionExpired",
+    "MireaRefreshFailed",
+    "MireaRateLimited",
+    "MireaServerError",
+    "MireaParseFailed",
+    "ensure_fresh_token",
     "get_authorization_header",
     "get_token_age_seconds",
+    "get_token_exp",
     "try_refresh_tokens",
 ]
 
-__version__ = "0.2.0"
+__version__ = "0.3.4"
