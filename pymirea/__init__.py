@@ -34,6 +34,13 @@ from .exceptions import (
     MireaServerError,
     MireaSessionExpired,
 )
+from .schedule import (
+    ClassroomInfo,
+    GroupInfo,
+    MireaSchedule,
+    Schedule,
+    ScheduleEvent,
+)
 from .session import MireaAPI
 from .tokens import (
     ensure_fresh_token,
@@ -51,6 +58,11 @@ __all__ = [
     "MireaACS",
     "MireaAuth",
     "MireaEsports",
+    "MireaSchedule",
+    "Schedule",
+    "ScheduleEvent",
+    "GroupInfo",
+    "ClassroomInfo",
     "SessionCrypto",
     "AuthChallenge",
     "AuthResult",
@@ -67,4 +79,4 @@ __all__ = [
     "try_refresh_tokens",
 ]
 
-__version__ = "0.3.5"
+__version__ = "0.4.0"
